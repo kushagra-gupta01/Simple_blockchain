@@ -62,7 +62,7 @@ func CreateBlock(prevBlock *Block, data BookCheckout)(*Block){
 }
 
 func (bc *Blockchain)AddBlock(data BookCheckout){
-	prevBlock := bc.Block[bc.Block(length)-1]
+	prevBlock := bc.Block[len(bc.Block)-1]
 	Block := CreateBlock(prevBlock,data)
 
 	if validBlock(prevBlock,Block){
@@ -143,7 +143,7 @@ func getBlockchain(w http.ResponseWriter, r *http.Request){
 }
 
 func GenesisBlock() (*Block){
-	return CreateBlock(&Block{},&BookCheckout{IsGenesis:true})
+	return CreateBlock(&Block{},BookCheckout{IsGenesis:true})
 }
 
 func NewBlockChain()(*Blockchain){
