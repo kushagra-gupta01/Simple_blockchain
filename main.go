@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 	"github.com/gorilla/mux"
 )
@@ -37,14 +38,14 @@ type Block struct{
 }
 
 type Blockchain struct{
-	Block[] *Block
+	Blocks[] *Block
 }
 
  var blockchain *Blockchain
 
 func (b *Block)generateHash(){
 	bytes,_ := json.Marshal(b.Data)
-	data := string(b.Position) + b.TimeStamp + string(bytes) + b.PrevHash
+	data := strconv.Itoa(b.Position) + b.TimeStamp + string(bytes) + b.PrevHash
 
 	hash := sha256.New()
 	hash.Write([]byte(data))
@@ -62,17 +63,17 @@ func CreateBlock(prevBlock *Block, data BookCheckout)(*Block){
 }
 
 func (bc *Blockchain)AddBlock(data BookCheckout){
-	prevBlock := bc.Block[len(bc.Block)-1]
+	prevBlock := bc.Blocks[len(bc.Blocks)-1]
 	Block := CreateBlock(prevBlock,data)
 
-	if validBlock(prevBlock,Block){
-		bc.Block = append(bc.Block, Block)
+	if validBlock(Block,prevBlock){
+		bc.Blocks = append(bc.Blocks, Block)
 	}
 }
 
-func validBlock(prevBlock *Block,block *Block)(bool){
+func validBlock(block ,prevBlock *Block)(bool){
 
-	if prevBlock.Hash != block.Hash{
+	if prevBlock.Hash != block.PrevHash{
 		return false
 	}
 
@@ -129,11 +130,20 @@ func writeBlock(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte("could not write block"))
 	}
 	blockchain.AddBlock(CheckoutItem)
+	res,err := json.MarshalIndent(CheckoutItem,""," ")
+	if err != nil{
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Printf("could not marshal payload: %v\n", err)
+		w.Write([]byte("could not write block"))
+		return 
+	}
+	w.WriteHeader(http.StatusOK)
+	w.Write(res)
 }
 
 func getBlockchain(w http.ResponseWriter, r *http.Request){
 
-	jbytes,err := json.MarshalIndent(blockchain.Block,""," ")
+	jbytes,err := json.MarshalIndent(blockchain.Blocks,""," ")
 	if err !=nil{
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(err)
@@ -160,7 +170,7 @@ func main(){
 	r.HandleFunc("/new", newBook).Methods("POST")
 	
 	go func(){
-		for _,block := range blockchain.Block{
+		for _,block := range blockchain.Blocks{
 			fmt.Printf("Prev. Hash: %x\n",block.PrevHash)
 			bytes,_ := json.MarshalIndent(block.Data,""," ")
 			fmt.Printf("Data:%v\n",string(bytes))
